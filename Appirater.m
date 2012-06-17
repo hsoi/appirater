@@ -81,7 +81,7 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
     SCNetworkReachabilityRef defaultRouteReachability = SCNetworkReachabilityCreateWithAddress(NULL, (struct sockaddr *)&zeroAddress);
     SCNetworkReachabilityFlags flags;
 	
-    BOOL didRetrieveFlags = SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags);
+    BOOL didRetrieveFlags = (BOOL)SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags);
     CFRelease(defaultRouteReachability);
 	
     if (!didRetrieveFlags)
@@ -473,7 +473,7 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 	NSString*	theString = rateLater;
 	if (theString == nil)
 	{
-		theString = NSLocalizedStringFromTable(@"Remind me later, @"Appirater", nil);
+		theString = NSLocalizedStringFromTable(@"Remind me later", @"Appirater", nil);
 	}
 	
 	return theString;
