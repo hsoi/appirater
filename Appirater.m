@@ -55,11 +55,20 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 - (BOOL)ratingConditionsHaveBeenMet;
 - (void)incrementUseCount;
 - (void)hideRatingAlert;
++ (void)appWillResignActive;
 @end
 
 @implementation Appirater 
 
 @synthesize ratingAlert;
+
+@dynamic appName;
+@dynamic message;
+@dynamic messageTitle;
+@dynamic cancelButton;
+@dynamic rateButton;
+@dynamic rateLater;
+
 
 - (BOOL)connectedToNetwork {
     // Create zero addy
@@ -108,11 +117,11 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 }
 
 - (void)showRatingAlert {
-	UIAlertView *alertView = [[[UIAlertView alloc] initWithTitle:APPIRATER_MESSAGE_TITLE
-														 message:APPIRATER_MESSAGE
+	UIAlertView *alertView = [[[UIAlertView alloc] initWithTitle:self.messageTitle
+														 message:self.message
 														delegate:self
-											   cancelButtonTitle:APPIRATER_CANCEL_BUTTON
-											   otherButtonTitles:APPIRATER_RATE_BUTTON, APPIRATER_RATE_LATER, nil] autorelease];
+											   cancelButtonTitle:self.cancelButton
+											   otherButtonTitles:self.rateButton, self.rateLater, nil] autorelease];
 	self.ratingAlert = alertView;
 	[alertView show];
 }
@@ -125,12 +134,12 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 	
 	NSDate *dateOfFirstLaunch = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAppiraterFirstUseDate]];
 	NSTimeInterval timeSinceFirstLaunch = [[NSDate date] timeIntervalSinceDate:dateOfFirstLaunch];
-	NSTimeInterval timeUntilRate = 60 * 60 * 24 * APPIRATER_DAYS_UNTIL_PROMPT;
+	NSTimeInterval timeUntilRate = 60.0 * 60.0 * 24.0 * ((double)APPIRATER_DAYS_UNTIL_PROMPT);
 	if (timeSinceFirstLaunch < timeUntilRate)
 		return NO;
 	
 	// check if the app has been used enough
-	int useCount = [userDefaults integerForKey:kAppiraterUseCount];
+	NSInteger useCount = [userDefaults integerForKey:kAppiraterUseCount];
 	if (useCount <= APPIRATER_USES_UNTIL_PROMPT)
 		return NO;
 	
@@ -150,7 +159,7 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 	// if the user wanted to be reminded later, has enough time passed?
 	NSDate *reminderRequestDate = [NSDate dateWithTimeIntervalSince1970:[userDefaults doubleForKey:kAppiraterReminderRequestDate]];
 	NSTimeInterval timeSinceReminderRequest = [[NSDate date] timeIntervalSinceDate:reminderRequestDate];
-	NSTimeInterval timeUntilReminder = 60 * 60 * 24 * APPIRATER_TIME_BEFORE_REMINDING;
+	NSTimeInterval timeUntilReminder = 60.0* 60.0 * 24.0 * ((double)APPIRATER_TIME_BEFORE_REMINDING);
 	if (timeSinceReminderRequest < timeUntilReminder)
 		return NO;
 	
@@ -184,8 +193,9 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 		}
 		
 		// increment the use count
-		int useCount = [userDefaults integerForKey:kAppiraterUseCount];
-		useCount++;
+		NSInteger useCount = [userDefaults integerForKey:kAppiraterUseCount];
+		if (useCount < NSIntegerMax)	// Hsoi 20-Oct-2011 - Mind rollover. If we hit max, it shouldn't matter... just don't roll over else problems will ensue
+			useCount++;
 		[userDefaults setInteger:useCount forKey:kAppiraterUseCount];
 		if (APPIRATER_DEBUG)
 			NSLog(@"APPIRATER Use count: %d", useCount);
@@ -232,8 +242,9 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 		}
 		
 		// increment the significant event count
-		int sigEventCount = [userDefaults integerForKey:kAppiraterSignificantEventCount];
-		sigEventCount++;
+		NSInteger sigEventCount = [userDefaults integerForKey:kAppiraterSignificantEventCount];
+		if (sigEventCount < NSIntegerMax) // Hsoi 20-Oct-2011 - Mind rollover. If we hit max, it shouldn't matter... just don't roll over else problems will ensue
+			sigEventCount++;
 		[userDefaults setInteger:sigEventCount forKey:kAppiraterSignificantEventCount];
 		if (APPIRATER_DEBUG)
 			NSLog(@"APPIRATER Significant event count: %d", sigEventCount);
@@ -333,6 +344,8 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 }
 
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+#pragma unused(alertView)
+
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	
 	switch (buttonIndex) {
@@ -358,5 +371,120 @@ NSString *templateReviewURL = @"itms-apps://ax.itunes.apple.com/WebObjects/MZSto
 			break;
 	}
 }
+
+
+#pragma mark -
+#pragma mark --- Accessors ---
+
+- (NSString*)appName
+{
+	NSString*	theString = appName;
+	if (theString == nil)
+	{
+		// Hsoi 20-Oct-2011 - A typical "setAppName" might be to use something other than the kCFBundleNameKey
+		theString = [[[NSBundle mainBundle] infoDictionary] objectForKey:(NSString*)kCFBundleNameKey];
+	}
+	
+	return theString;
+}
+
+- (void)setAppName:(NSString*)inString
+{
+	[appName release];
+	appName = [inString copy];
+}
+
+
+- (NSString*)message
+{
+	NSString*	theString = message;
+	if (theString == nil)
+	{
+		theString = [NSString stringWithFormat:NSLocalizedStringFromTable(@"If you enjoy using %@, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!", @"Appirater", nil), self.appName];
+	}
+	
+	return theString;
+}
+
+- (void)setMessage:(NSString*)inString
+{
+	[message release];
+	message = [inString copy];
+}
+
+
+- (NSString*)messageTitle
+{
+	NSString*	theString = messageTitle;
+	if (theString == nil)
+	{
+		theString = [NSString stringWithFormat:NSLocalizedStringFromTable(@"Rate %@", @"Appirater", nil), self.appName];
+	}
+	
+	return theString;
+}
+
+- (void)setMessageTitle:(NSString*)inString
+{
+	[messageTitle release];
+	messageTitle = [inString copy];
+}
+
+
+- (NSString*)cancelButton
+{
+	NSString*	theString = cancelButton;
+	if (theString == nil)
+	{
+		theString = NSLocalizedStringFromTable(@"No, Thanks", @"Appirater", nil);
+	}
+	
+	return theString;
+}
+
+- (void)setCancelButton:(NSString*)inString
+{
+	[cancelButton release];
+	cancelButton = [inString copy];
+}
+
+
+- (NSString*)rateButton
+{
+	NSString*	theString = rateButton;
+	if (theString == nil)
+	{
+		theString = [NSString stringWithFormat:NSLocalizedStringFromTable(@"Rate %@", @"Appirater", nil), self.appName];
+	}
+	
+	return theString;
+}
+
+- (void)setRateButton:(NSString*)inString
+{
+	[rateButton release];
+	rateButton = [inString copy];
+}
+
+
+
+- (NSString*)rateLater
+{
+	NSString*	theString = rateLater;
+	if (theString == nil)
+	{
+		theString = NSLocalizedStringFromTable(@"Remind me later, @"Appirater", nil);
+	}
+	
+	return theString;
+}
+
+- (void)setRateLater:(NSString*)inString
+{
+	[rateLater release];
+	rateLater = [inString copy];
+}
+
+
 
 @end
