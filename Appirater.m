@@ -156,7 +156,7 @@ static BOOL _alwaysUseMainBundle = NO;
     SCNetworkReachabilityRef defaultRouteReachability = SCNetworkReachabilityCreateWithAddress(NULL, (struct sockaddr *)&zeroAddress);
     SCNetworkReachabilityFlags flags;
 	
-    BOOL didRetrieveFlags = SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags);
+    BOOL didRetrieveFlags = (BOOL)SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags);
     CFRelease(defaultRouteReachability);
 	
     if (!didRetrieveFlags)
@@ -379,9 +379,13 @@ static BOOL _alwaysUseMainBundle = NO;
     return [[NSUserDefaults standardUserDefaults] boolForKey:kAppiraterRatedCurrentVersion];
 }
 
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
 + (void)appLaunched {
 	[Appirater appLaunched:YES];
 }
+#pragma clang diagnostic pop
 
 + (void)appLaunched:(BOOL)canPromptForRating {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0),
